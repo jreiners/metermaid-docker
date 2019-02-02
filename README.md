@@ -34,6 +34,8 @@ docker-compose up -d
 It exposes a few ports on the host side.
 
 3306- mysql - root:weatherdb
+
+
 3000 - grafana admin:admin
 
 All app storage is persistant, you can change the password for grafana, and it'll stick between rebuilds. You can also change the mysql username, but my scripts default to that user so you might need to fix a few things.
