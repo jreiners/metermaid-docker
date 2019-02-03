@@ -31,7 +31,7 @@ main=j['weather'][0]['main']
 q = "INSERT INTO metermaid.weatherdb (epoch, mintemp, maxtemp,currenttemp,windspeed,winddir,text1,text2,humidity,pressure) VALUES(NOW(),'{}','{}','{}','{}','{}','{}','{}','{}','{}');".format(min,max,currenttemp,windspeed,winddir,describe,main,humidity,pressure)
 
 cnx = mysql.connector.connect(user='root', password='weatherdb',
-                              host='127.0.0.1',
+                              host='weatherdb',
                               database='metermaid')
 print('inserting data')
 #print(q)

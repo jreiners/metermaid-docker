@@ -12,4 +12,4 @@ COPY code /app/bin/
 RUN python3 -m pip install pymysql
 RUN /usr/local/go/bin/go get github.com/bemasher/rtlamr && /usr/local/go/bin/go get github.com/bemasher/rtlamr-collect
 RUN python3 -m pip install mysql-connector-python simplejson mysql-connector requests
-ENTRYPOINT python3 /app/bin/metermaid.py
+ENTRYPOINT /bin/bash run.sh
