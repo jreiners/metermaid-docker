@@ -11,6 +11,6 @@ ENV PATH=$GOPATH/bin:$GOROOT/bin:$PATH:/app/bin/
 RUN ln -s /usr/bin/python3.4 /usr/bin/python3
 COPY code /app/bin/
 RUN python3 -m pip install pymysql
-RUN /usr/local/go/bin/go get github.com/bemasher/rtlamr && /usr/local/go/bin/go get github.com/bemasher/rtlamr-collect
+RUN /usr/local/go/bin/go get github.com/bemasher/rtlamr
 RUN python3 -m pip install mysql-connector-python simplejson mysql-connector requests
 ENTRYPOINT /bin/bash run.sh
