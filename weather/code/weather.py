@@ -1,52 +1,75 @@
+import argparse
 import requests
 import simplejson as json
-import mysql.connector
+import sqlite3
+from sqlite3 import Error
 
-createdb="CREATE DATABASE IF NOT EXISTS metermaid;"
-createtbl1="CREATE TABLE IF NOT EXISTS `utilities` (`mPrimaryKey` int(6) unsigned NOT NULL AUTO_INCREMENT,`mId` varchar(50) DEFAULT NULL,`mType` int(2) DEFAULT NULL,`mTime` int(11) DEFAULT NULL, `mTotalConsumption` int(11) DEFAULT NULL,`mConsumed` float DEFAULT NULL,PRIMARY KEY (`mPrimaryKey`)) ENGINE=InnoDB AUTO_INCREMENT=1408484 DEFAULT CHARSET=latin1 ROW_FORMAT=COMPRESSED;"
-createtbl2="CREATE TABLE IF NOT EXISTS `weatherdb` (`id` int(11) NOT NULL AUTO_INCREMENT,`epoch` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(), `mintemp` float DEFAULT NULL, `maxtemp` float DEFAULT NULL, `currenttemp` float DEFAULT NULL, `windspeed` float DEFAULT NULL, `winddir` varchar(3) DEFAULT NULL, `text1` varchar(30) DEFAULT NULL, `text2` varchar(30) DEFAULT NULL, `humidity` float DEFAULT NULL, `pressure` float DEFAULT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB AUTO_INCREMENT=57915 DEFAULT CHARSET=latin1 ROW_FORMAT=COMPRESSED;"
+# Function to parse command-line arguments
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Retrieve weather information and store it in a SQLite database.")
+    parser.add_argument("api_key", help="OpenWeatherMap API key")
+    parser.add_argument("location", help="Location for weather information (e.g., city name)")
 
+    return parser.parse_args()
 
-url='http://api.openweathermap.org/data/2.5/weather?q=Omaha&appid=fd3a41ccb4f3d1242381c0d007883e4d&units=imperial'
+# Function to retrieve weather information and store it in the database
+def retrieve_and_store_weather(api_key, location):
+    # SQLite database file path
+    db_path = 'weather_data.db'
 
-response = requests.get(url, verify=True) #Verify is check SSL certificate
+    # SQL statements for creating the database and tables
+    createdb = "CREATE TABLE IF NOT EXISTS weather_data (id INTEGER PRIMARY KEY AUTOINCREMENT, epoch TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " \
+               "mintemp REAL, maxtemp REAL, currenttemp REAL, windspeed REAL, winddir TEXT, text1 TEXT, text2 TEXT, humidity REAL, pressure REAL);"
 
-weatherjson = response.content
+    url = f'http://api.openweathermap.org/data/2.5/weather?q={location}&appid={api_key}&units=imperial'
+    response = requests.get(url, verify=True)
+    weatherjson = response.content
+    j = json.loads(response.content)
 
-j = json.loads(response.content)
+    # Check if 'main' key is present in the response
+    if 'main' in j:
+        pressure = j['main'].get('pressure', None)
+        humidity = j['main'].get('humidity', None)
 
+        max_temp = j['main'].get('temp_max', None)
+        min_temp = j['main'].get('temp_min', None)
+        current_temp = j['main'].get('temp', None)
+    else:
+        print("Error: 'main' key not present in the response.")
+        return  # Exit the function if 'main' key is not present
 
-pressure=j['main']['pressure']
-humidity=j['main']['humidity']
+    wind_speed = j['wind'].get('speed', None)
+    wind_dir = j['wind'].get('deg', None)
+    description = j['weather'][0].get('description', None)
+    main_weather = j['weather'][0].get('main', None)
 
-max=j['main']['temp_max']
-min=j['main']['temp_min']
-currenttemp=j['main']['temp']
-windspeed=j['wind']['speed']
-winddir=j['wind']['deg']
-describe=j['weather'][0]['description']
-main=j['weather'][0]['main']
+    # SQL statement for inserting weather data into the database
+    insert_query = "INSERT INTO weather_data (mintemp, maxtemp, currenttemp, windspeed, winddir, text1, text2, humidity, pressure) " \
+                   "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);"
 
+    try:
+        # Use a context manager for SQLite connection and cursor
+        with sqlite3.connect(db_path) as connection:
+            cursor = connection.cursor()
 
-q = "INSERT INTO metermaid.weatherdb (epoch, mintemp, maxtemp,currenttemp,windspeed,winddir,text1,text2,humidity,pressure) VALUES(NOW(),'{}','{}','{}','{}','{}','{}','{}','{}','{}');".format(min,max,currenttemp,windspeed,winddir,describe,main,humidity,pressure)
+            # Create the table if it doesn't exist
+            cursor.execute(createdb)
 
-cnx = mysql.connector.connect(user='root', password='weatherdb',
-                              host='weatherdb',
-                              database='metermaid')
-print('inserting data')
-#print(q)
-print('opening cursor.')
-cursor = cnx.cursor()
-cursor.execute(createdb)
-cursor.execute(createtbl1)
-cursor.execute(createtbl2)
+            # Insert data into the table
+            cursor.execute(insert_query, (min_temp, max_temp, current_temp, wind_speed, wind_dir, description, main_weather, humidity, pressure))
 
-print('executing mysql insert')
-cursor.execute(q)
-print('committing')
-#cursor.commit()
-#cursor.close()
-cnx.commit()
-cnx.close()
-print('received json:')
-print(weatherjson)
+            # Commit the changes to the database
+            connection.commit()
+
+    except Error as e:
+        print(f"Error: {e}")
+
+    print('Received JSON:')
+    print(weatherjson)
+
+def main():
+    args = parse_arguments()
+    retrieve_and_store_weather(args.api_key, args.location)
+
+if __name__ == "__main__":
+    main()
