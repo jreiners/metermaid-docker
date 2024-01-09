@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.4
+#!/usr/bin/env python3
 # Depends:
 # netcat, rtlamr, rtl_tcp
 
@@ -6,42 +6,47 @@ import subprocess
 import socket
 import re
 import time
-import pymysql
+import sqlite3
 import utility_meters
 
-#adjustable path variables.
+# Adjustable path variables.
 
-meters              = {}
-electricMeterTypes  = [4, 5, 7, 8]
-gasMeterTypes       = [2, 9, 12]
-waterMeterTypes     = [11, 13]
+meters = {}
+electricMeterTypes = [4, 5, 7, 8]
+gasMeterTypes = [2, 9, 12]
+waterMeterTypes = [11, 13]
 
-#exec(open("dbConnect.py").read()) # 
-dbConn  = pymysql.connect(user='root', password='weatherdb', host='weatherdb', database='metermaid', autocommit=True)
-dbCur   = dbConn.cursor()
+# Executing utility_meters.py to get the modified classes
+exec(open("utility_meters.py").read())
 
-# start the rtl device and server
-print("Sarting RTL_TCP Out Port 5566")
-rtl_tcp = subprocess.Popen("rtl_tcp -p 5566", stdout=subprocess.PIPE, shell=True) # have to manually start it ???
-print("sleeping 15 seconds")
+# SQLite connection and cursor creation
+dbConn = sqlite3.connect("metermaid.db")
+dbCur = dbConn.cursor()
+
+# Start the rtl device and server
+print("Starting RTL_TCP Out Port 5566")
+rtl_tcp = subprocess.Popen("rtl_tcp -p 5566", stdout=subprocess.PIPE, shell=True)
+print("Sleeping 15 seconds")
 time.sleep(15)
 
-print("Sarting RTLAMR In Port 5566; Out on 5577")
-print("starting rtlamr")
-rtlamr = subprocess.Popen("rtlamr -server 127.0.0.1:5566 | nc -l -p 5577", stdout=subprocess.PIPE, shell=True)
-print("sleeping 5 seconds")
+print("Starting RTLAMR In Port 5566; Out on 5577")
+print("Starting rtlamr")
+rtlamr = subprocess.Popen(
+    "rtlamr -server 127.0.0.1:5566 | nc -l -p 5577", stdout=subprocess.PIPE, shell=True
+)
+print("Sleeping 5 seconds")
 time.sleep(5)
 
 rtlSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-rtlSocket.connect(('127.0.0.1', 5577))
+rtlSocket.connect(("127.0.0.1", 5577))
 
-rtlSocket.recv(498) # skip the initial lines
+rtlSocket.recv(498)  # Skip the initial lines
 while True:
-    # recieve line, always same length when using plaintext format
+    # Receive line, always the same length when using plaintext format
     pkt = rtlSocket.recv(111).decode("ascii")
-    rtlSocket.recv(1) # recieve '\n'
+    rtlSocket.recv(1)  # Receive '\n'
     # print(pkt)
-    # reg split the line; figure out why it sometimes doesn't work
+    # Regex split the line; figure out why it sometimes doesn't work
     # {Time:2015-10-10T12:48:47.704 SCM:{ID:42354463 Type: 5 Tamper:{Phy:01 Enc:03} Consumption: 5559353 CRC:0xBB11}}
     try:
         pktRegex = re.search("Time\:(\S+) .+ID\:(\d+) +Type\: *(\d{1,2}) .+Consumption: *(\d+)", pkt)
@@ -49,29 +54,29 @@ while True:
         pEpoch = time.mktime(time.strptime(pDate, "%Y-%m-%dT%H:%M:%S.%f"))
         pId = str(pktRegex.group(2))
         pType = str(pktRegex.group(3))
-        # consumption (xxxyy) kWh * 10 = Wh
+        # Consumption (xxxyy) kWh * 10 = Wh
         pConsumption = int(pktRegex.group(4))
         pWh = pConsumption * 10
     except AttributeError:
         print("Error: Received a corrupted packet from stream")
         continue
 
-    # electric; type 4, 5, 7, 8
+    # Electric; type 4, 5, 7, 8
     if int(pType) in electricMeterTypes:
         if pId not in meters:
-            meters[pId] = utility_meters.ElectricMeter(pId, pType, pEpoch, pWh, dbCur)
+            meters[pId] = ElectricMeter(pId, pType, pEpoch, pWh, dbCur)
         watts = meters[pId].getCurrentWatts(pEpoch, pWh)
 
-    # gas; type 2, 9, 12
+    # Gas; type 2, 9, 12
     elif int(pType) in gasMeterTypes:
         if pId not in meters:
-            meters[pId] = utility_meters.GasMeter(pId, pType, pEpoch, pConsumption, dbCur)
+            meters[pId] = GasMeter(pId, pType, pEpoch, pConsumption, dbCur)
         gasPerSec = meters[pId].getGasPerSec(pEpoch, pConsumption)
 
-    # water; type 11, 13
+    # Water; type 11, 13
     elif int(pType) in waterMeterTypes:
         if pId not in meters:
-            meters[pId] = utility_meters.WaterMeter(pId, pType, pEpoch, pConsumption, dbCur)
+            meters[pId] = WaterMeter(pId, pType, pEpoch, pConsumption, dbCur)
         waterPerSec = meters[pId].getWaterPerSec(pEpoch, pConsumption)
     else:
         print("Meter type not recognized")
