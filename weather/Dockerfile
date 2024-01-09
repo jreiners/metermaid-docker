@@ -3,7 +3,7 @@
 FROM python:3-alpine
 
 # Create necessary directories
-RUN mkdir -p /projects /app/bin
+RUN mkdir -p /data /app/bin
 
 # Copy the code into the container
 COPY code /app/bin/

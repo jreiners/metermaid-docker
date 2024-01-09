@@ -1,60 +1,37 @@
-version: '3.1'
+version: "3.9"
 
 services:
-
-  weatherdb:
-    image: mariadb
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: weatherdb
-      MYSQL_DATABASE: metermaid
-
-    ports:
-            - 3306:3306
-    volumes:
-            - weather-mysql:/var/lib/mysql
-    networks:
-            - weather
-    
   grafana:
     image: grafana/grafana
     restart: always
     ports:
-            - 3000:3000
+      - 3000:3000
     volumes:
-            - grafana-storage:/var/lib/grafana
+      - grafana-storage:/var/lib/grafana
     networks:
-            - weather
-    depends_on:
-            - weatherdb
-  
+      - weather
+
   metermaid:
     build: ./metermaid/
     restart: always
     ports:
-            - 1234:1234
+      - 1234:1234
     volumes:
-            #- metermaid-storage:/app
-            - /dev/bus/usb:/dev/bus/usb
-                
-    privileged: True
+      - ./meter_data:/data
+      - /dev/bus/usb:/dev/bus/usb
     networks:
-            - weather
-    depends_on:
-            - weatherdb
+      - weather
 
   weatherscript:
     build: ./weather/
     restart: always
+    volumes:
+      - ./weather_data:/data
     networks:
-            - weather
-    depends_on:
-            - weatherdb
+      - weather
 
 volumes:
-  weather-mysql:
   grafana-storage:
-  metermaid-storage:
 
 networks:
   weather:

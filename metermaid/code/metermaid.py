@@ -20,7 +20,7 @@ waterMeterTypes = [11, 13]
 exec(open("utility_meters.py").read())
 
 # SQLite connection and cursor creation
-dbConn = sqlite3.connect("metermaid.db")
+dbConn = sqlite3.connect("/data/metermaid.db")
 dbCur = dbConn.cursor()
 
 # Start the rtl device and server

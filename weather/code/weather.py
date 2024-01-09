@@ -15,7 +15,7 @@ def parse_arguments():
 # Function to retrieve weather information and store it in the database
 def retrieve_and_store_weather(api_key, location):
     # SQLite database file path
-    db_path = 'weather_data.db'
+    db_path = '/data/weather_data.db'
 
     # SQL statements for creating the database and tables
     createdb = "CREATE TABLE IF NOT EXISTS weather_data (id INTEGER PRIMARY KEY AUTOINCREMENT, epoch TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " \

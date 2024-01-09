@@ -9,7 +9,7 @@ RUN apk --update add --no-cache \
     wget
 
 # Create necessary directories
-RUN mkdir -p /projects /app/bin
+RUN mkdir -p /projects /app/bin /data
 
 # Set environment variables for Go
 ENV GOROOT=/usr/lib/go

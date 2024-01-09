@@ -215,7 +215,7 @@ class WaterMeter(UtilityMeter):
 
 def main():
     # SQLite connection and cursor creation
-    conn = sqlite3.connect("metermaid.db")
+    conn = sqlite3.connect("/data/metermaid.db")
     cursor = conn.cursor()
 
     # Example usage of ElectricMeter class
